@@ -18,6 +18,9 @@ class Popup(Toplevel):
     def __init__(self, root: Tk, settings: Settings, pack: Pack, state: State):
         state.popup_number += 1
         super().__init__(bg="black")
+        if utils.is_mac():
+            self.overrideredirect(True)
+            # For some reason it has to be set like this on Mac, trying to set it through the set_borderless function fails
 
         self.root = root
         self.settings = settings
@@ -25,9 +28,13 @@ class Popup(Toplevel):
         self.state = state
         self.theme = get_theme(settings)
 
-        self.bind("<KeyPress>", lambda event: panic(self.root, self.settings, self.state, event.keysym))
+        self.bind(
+            "<KeyPress>",
+            lambda event: panic(self.root, self.settings, self.state, event.keysym),
+        )
         self.attributes("-topmost", True)
-        utils.set_borderless(self)
+        if utils.is_windows() or utils.is_linux():
+            utils.set_borderless(self)
         # TODO: May be needed for opacity on some Linux setups
         # self.update_idletasks()
         # self.wait_visibility()
@@ -48,8 +55,14 @@ class Popup(Toplevel):
     def compute_geometry(self, source_width: int, source_height: int) -> None:
         self.monitor = random.choice(get_monitors())
 
-        source_size = max(source_width, source_height) / min(self.monitor.width, self.monitor.height)
-        target_size = (random.randint(30, 70) if not self.settings.lowkey_mode else random.randint(20, 50)) / 100
+        source_size = max(source_width, source_height) / min(
+            self.monitor.width, self.monitor.height
+        )
+        target_size = (
+            random.randint(30, 70)
+            if not self.settings.lowkey_mode
+            else random.randint(20, 50)
+        ) / 100
         scale = target_size / source_size
 
         self.width = int(source_width * scale)
@@ -63,14 +76,28 @@ class Popup(Toplevel):
             right = corner == 0 or corner == 3  # Top right or bottom right
             bottom = corner == 2 or corner == 3  # Bottom left or bottom right
             self.x = self.monitor.x + (self.monitor.width - self.width if right else 0)
-            self.y = self.monitor.y + (self.monitor.height - self.height if bottom else 0)
+            self.y = self.monitor.y + (
+                self.monitor.height - self.height if bottom else 0
+            )
         else:
-            self.x = random.randint(self.monitor.x, self.monitor.x + self.monitor.width - self.width)
-            self.y = random.randint(self.monitor.y, self.monitor.y + self.monitor.height - self.height)
+            self.x = random.randint(
+                self.monitor.x, self.monitor.x + self.monitor.width - self.width
+            )
+            self.y = random.randint(
+                self.monitor.y, self.monitor.y + self.monitor.height - self.height
+            )
 
     def try_caption(self) -> None:
-        if self.settings.captions_in_popups and self.pack.has_captions(self.settings, self.media):
-            label = Label(self, text=self.pack.random_caption(self.settings, self.media), wraplength=self.width, fg=self.theme.fg, bg=self.theme.bg)
+        if self.settings.captions_in_popups and self.pack.has_captions(
+            self.settings, self.media
+        ):
+            label = Label(
+                self,
+                text=self.pack.random_caption(self.settings, self.media),
+                wraplength=self.width,
+                fg=self.theme.fg,
+                bg=self.theme.bg,
+            )
             label.place(x=5, y=5)
 
     def try_corruption_dev(self) -> None:
@@ -81,11 +108,20 @@ class Popup(Toplevel):
                 if mood in level.moods:
                     levels.append(self.pack.corruption_levels.index(level) + 1)
 
-            label_level = Label(self, text=f"Corruption levels: {levels}", fg=self.theme.fg, bg=self.theme.bg)
-            label_mood = Label(self, text=f"Popup mood: {mood}", fg=self.theme.fg, bg=self.theme.bg)
+            label_level = Label(
+                self,
+                text=f"Corruption levels: {levels}",
+                fg=self.theme.fg,
+                bg=self.theme.bg,
+            )
+            label_mood = Label(
+                self, text=f"Popup mood: {mood}", fg=self.theme.fg, bg=self.theme.bg
+            )
 
             label_level.place(x=5, y=(self.height // 2))
-            label_mood.place(x=5, y=(self.height // 2 + label_level.winfo_reqheight() + 2))
+            label_mood.place(
+                x=5, y=(self.height // 2 + label_level.winfo_reqheight() + 2)
+            )
 
     def try_button(self) -> None:
         if self.settings.buttonless:
@@ -107,8 +143,12 @@ class Popup(Toplevel):
             speed_x = 0 if self.settings.moving_chance else self.settings.moving_speed
             speed_y = 0 if self.settings.moving_chance else self.settings.moving_speed
             while speed_x == 0 and speed_y == 0:
-                speed_x = random.randint(-self.settings.moving_speed, self.settings.moving_speed)
-                speed_y = random.randint(-self.settings.moving_speed, self.settings.moving_speed)
+                speed_x = random.randint(
+                    -self.settings.moving_speed, self.settings.moving_speed
+                )
+                speed_y = random.randint(
+                    -self.settings.moving_speed, self.settings.moving_speed
+                )
 
             try:
                 while True:
@@ -121,7 +161,9 @@ class Popup(Toplevel):
                         speed_x = -speed_x
 
                     top = self.y <= self.monitor.y
-                    bottom = self.y + self.height >= self.monitor.y + self.monitor.height
+                    bottom = (
+                        self.y + self.height >= self.monitor.y + self.monitor.height
+                    )
                     if top or bottom:
                         speed_y = -speed_y
 
@@ -134,7 +176,11 @@ class Popup(Toplevel):
             Thread(target=move, daemon=True).start()
 
     def try_multi_click(self) -> None:
-        self.clicks_to_close = self.pack.random_clicks_to_close(self.media) if self.settings.multi_click_popups else 1
+        self.clicks_to_close = (
+            self.pack.random_clicks_to_close(self.media)
+            if self.settings.multi_click_popups
+            else 1
+        )
 
     def try_timeout(self) -> None:
         def fade_out() -> None:
@@ -148,14 +194,18 @@ class Popup(Toplevel):
                 pass  # Exception thrown when manually closed during fade out
 
         if self.settings.timeout_enabled and not self.state.pump_scare:
-            self.after(self.settings.timeout, Thread(target=fade_out, daemon=True).start)
+            self.after(
+                self.settings.timeout, Thread(target=fade_out, daemon=True).start
+            )
 
     def try_pump_scare(self) -> None:
         if self.state.pump_scare:
             self.after(2500, self.close)
 
     def try_web_open(self) -> None:
-        if self.settings.web_on_popup_close and roll((100 - self.settings.web_chance) / 2):
+        if self.settings.web_on_popup_close and roll(
+            (100 - self.settings.web_chance) / 2
+        ):
             open_web(self.pack)
 
     def try_mitosis(self) -> None:
@@ -166,7 +216,11 @@ class Popup(Toplevel):
 
             for n in range(self.settings.mitosis_strength):
                 try:
-                    popup = random.choices([ImagePopup, VideoPopup], [self.settings.image_chance, self.settings.video_chance], k=1)[0]
+                    popup = random.choices(
+                        [ImagePopup, VideoPopup],
+                        [self.settings.image_chance, self.settings.video_chance],
+                        k=1,
+                    )[0]
                 except ValueError:
                     popup = ImagePopup  # Exception thrown when both chances are 0
                 popup(self.root, self.settings, self.pack, self.state)
