@@ -48,6 +48,9 @@ from settings import load_config, load_default_config
 from utils import utils
 from widgets.tooltip import CreateToolTip
 
+if utils.is_mac():
+    from tkmacosx import Button # Override tkinter's on Mac
+
 PATH = Path(__file__).parent
 os.chdir(PATH)
 

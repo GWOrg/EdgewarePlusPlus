@@ -7,6 +7,8 @@ from settings import Settings
 from state import State
 from utils import utils
 
+if utils.is_mac():
+    from tkmacosx import Button # Override tkinter's on Mac
 
 class Prompt(Toplevel):
     def __init__(self, settings: Settings, pack: Pack, state: State):
