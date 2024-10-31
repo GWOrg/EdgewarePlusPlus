@@ -33,7 +33,7 @@ END"""
         subprocess.Popen(SCRIPT % wallpaper_path, shell=True)
         return True
     except:
-        sys.stderr.write("ERROR: Failed to set wallpaper. There might be a bug.\n")
+        sys.stderr.write("ERROR: Failed to set wallpaper. Mac likely asked for permission to do this, please check and allow.\n")
         return False
 
 
